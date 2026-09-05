@@ -1,0 +1,30 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Connect to the domotica server",
+                "description": "Enter the address of your OpenDomotica server.",
+                "data": {
+                    "host": "Host",
+                    "port": "Port",
+                    "ssl": "Use HTTPS"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Unable to connect to the domotica server."
+        },
+        "abort": {
+            "already_configured": "This server is already configured."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Update interval (seconds)"
+                }
+            }
+        }
+    }
+}

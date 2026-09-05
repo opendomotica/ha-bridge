@@ -1,0 +1,30 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Connetti al server di domotica",
+                "description": "Inserisci l'indirizzo del tuo server OpenDomotica.",
+                "data": {
+                    "host": "Host",
+                    "port": "Porta",
+                    "ssl": "Usa HTTPS"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Impossibile connettersi al server di domotica."
+        },
+        "abort": {
+            "already_configured": "Questo server è già configurato."
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "data": {
+                    "scan_interval": "Intervallo di aggiornamento (secondi)"
+                }
+            }
+        }
+    }
+}
