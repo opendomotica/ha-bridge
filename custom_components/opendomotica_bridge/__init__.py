@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_SSL
 from homeassistant.core import HomeAssistant
@@ -53,22 +52,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.info(
             "OpenDomotica Bridge: configure the domotica server to POST status updates to %s",
             webhook_url,
-        )
-        # INFO logs are filtered out by Home Assistant's default log level, so
-        # also surface the URL as a persistent notification in the UI.
-        persistent_notification.async_create(
-            hass,
-            (
-                "Configura il tuo server di domotica per inviare gli aggiornamenti di "
-                f"stato (POST) a questo indirizzo:\n\n`{webhook_url}`"
-            ),
-            title="OpenDomotica Bridge: webhook per gli aggiornamenti push",
-            notification_id=f"{DOMAIN}_webhook_{entry.entry_id}",
-        )
-        entry.async_on_unload(
-            lambda: persistent_notification.async_dismiss(
-                hass, f"{DOMAIN}_webhook_{entry.entry_id}"
-            )
         )
     else:
         _LOGGER.warning(
