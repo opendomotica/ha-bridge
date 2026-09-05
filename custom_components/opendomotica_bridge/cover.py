@@ -39,8 +39,8 @@ class OpenDomoticaCover(OpenDomoticaBridgeEntity, CoverEntity):
     """Representation of a motorised cover exposed by the domotica server.
 
     The device reports its position via current_value on a 0 (closed) - 250
-    (open) scale, rescaled here to HA's 0-100 percentage range. The API only
-    confirms turn_on/turn_off/set_value actions; there is no known "stop"
+    (open) scale, rescaled here to HA's 0-100 percentage range. Open/close are
+    sent as set_value at the scale extremes (0/250); there is no known "stop"
     command, so CoverEntityFeature.STOP is not advertised.
     """
 
@@ -62,13 +62,16 @@ class OpenDomoticaCover(OpenDomoticaBridgeEntity, CoverEntity):
         return position == 0 if position is not None else None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
-        await self._async_execute("open", self.coordinator.client.async_turn_on(self._device_id))
+        await self._async_execute(
+            "open", self.coordinator.client.async_set_value(self._device_id, COVER_MAX_VALUE)
+        )
 
     async def async_close_cover(self, **kwargs: Any) -> None:
-        await self._async_execute("close", self.coordinator.client.async_turn_off(self._device_id))
+        await self._async_execute("close", self.coordinator.client.async_set_value(self._device_id, 0))
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         raw_value = round(kwargs["position"] / 100 * COVER_MAX_VALUE)
+        raw_value = max(0, min(COVER_MAX_VALUE, raw_value))
         await self._async_execute(
             "set position of", self.coordinator.client.async_set_value(self._device_id, raw_value)
         )
