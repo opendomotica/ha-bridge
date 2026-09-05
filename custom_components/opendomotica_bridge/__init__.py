@@ -20,7 +20,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     client = OpenDomoticaApiClient(
         host=entry.data[CONF_HOST],
-        port=entry.data[CONF_PORT],
+        port=entry.data.get(CONF_PORT),
         session=session,
         use_ssl=entry.data.get(CONF_SSL, False),
     )

@@ -3,7 +3,6 @@ from homeassistant.const import Platform
 
 DOMAIN = "opendomotica_bridge"
 
-DEFAULT_PORT = 8080
 DEFAULT_SCAN_INTERVAL = 30
 
 PLATFORMS = [

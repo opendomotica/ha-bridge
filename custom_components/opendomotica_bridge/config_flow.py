@@ -13,14 +13,14 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import OpenDomoticaApiClient, OpenDomoticaApiError
-from .const import DEFAULT_PORT, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
-        vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
+        vol.Optional(CONF_PORT): int,
         vol.Optional(CONF_SSL, default=False): bool,
     }
 )
@@ -36,12 +36,12 @@ class OpenDomoticaBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             self._async_abort_entries_match(
-                {CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input[CONF_PORT]}
+                {CONF_HOST: user_input[CONF_HOST], CONF_PORT: user_input.get(CONF_PORT)}
             )
             session = async_get_clientsession(self.hass)
             client = OpenDomoticaApiClient(
                 host=user_input[CONF_HOST],
-                port=user_input[CONF_PORT],
+                port=user_input.get(CONF_PORT),
                 session=session,
                 use_ssl=user_input[CONF_SSL],
             )
@@ -50,10 +50,10 @@ class OpenDomoticaBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
             except OpenDomoticaApiError:
                 errors["base"] = "cannot_connect"
             else:
-                return self.async_create_entry(
-                    title=f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}",
-                    data=user_input,
-                )
+                title = user_input[CONF_HOST]
+                if user_input.get(CONF_PORT):
+                    title = f"{title}:{user_input[CONF_PORT]}"
+                return self.async_create_entry(title=title, data=user_input)
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors

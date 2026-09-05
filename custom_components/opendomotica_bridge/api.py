@@ -48,13 +48,14 @@ class OpenDomoticaApiClient:
     def __init__(
         self,
         host: str,
-        port: int,
+        port: int | None,
         session: aiohttp.ClientSession,
         use_ssl: bool = False,
     ) -> None:
         self._session = session
         scheme = "https" if use_ssl else "http"
-        self._base_url = f"{scheme}://{host}:{port}{API_BASE_PATH}"
+        netloc = f"{host}:{port}" if port else host
+        self._base_url = f"{scheme}://{netloc}{API_BASE_PATH}"
 
     async def async_get_devices(self) -> list[dict[str, Any]]:
         """Return the list of devices known by the domotica server (metadata only)."""
@@ -92,6 +93,8 @@ class OpenDomoticaApiClient:
                     return await response.json()
                 return await response.text()
         except aiohttp.ClientError as err:
+            _LOGGER.error("Error calling %s %s: %s", method, url, err)
             raise OpenDomoticaApiError(f"Error communicating with {url}: {err}") from err
         except TimeoutError as err:
+            _LOGGER.error("Timeout calling %s %s after %ss", method, url, API_TIMEOUT)
             raise OpenDomoticaApiError(f"Timeout communicating with {url}") from err
