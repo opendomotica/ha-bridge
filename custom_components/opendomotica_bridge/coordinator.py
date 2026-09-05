@@ -64,4 +64,9 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
             return
 
         new_data = {**self.data, device_id: {**device, "status_value": value}}
-        self.async_set_updated_data(new_data)
+        # Update data/listeners directly instead of via async_set_updated_data,
+        # which would reset the periodic refresh timer on every push and could
+        # starve the update_interval polling if pushes arrive frequently.
+        self.data = new_data
+        self.last_update_success = True
+        self.async_update_listeners()

@@ -73,7 +73,11 @@ class OpenDomoticaBridgeEntity(CoordinatorEntity[OpenDomoticaDataUpdateCoordinat
         return super().available and self._device_id in self.coordinator.data
 
     async def _async_execute(self, action: str, command: Coroutine[Any, Any, None]) -> None:
-        """Run a client command, logging and surfacing failures, then refresh state."""
+        """Run a client command, logging and surfacing failures.
+
+        State is not refreshed here: it is updated by the next push
+        notification or periodic poll, not by this call.
+        """
         try:
             await command
         except OpenDomoticaApiError as err:
@@ -81,4 +85,3 @@ class OpenDomoticaBridgeEntity(CoordinatorEntity[OpenDomoticaDataUpdateCoordinat
             raise HomeAssistantError(
                 f"Failed to {action} device {self._device_id}: {err}"
             ) from err
-        await self.coordinator.async_request_refresh()
