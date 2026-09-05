@@ -11,7 +11,7 @@ Confirmed endpoint contract:
 - POST /api/v1/devices/{device_id}/execute/turn_on             -> turn a device on
 - POST /api/v1/devices/{device_id}/execute/turn_off            -> turn a device off
 - POST /api/v1/devices/{device_id}/execute/toggle              -> toggle a device
-- POST /api/v1/devices/{device_id}/execute/set_value           -> set a value (sent as the "value" query param)
+- POST /api/v1/devices/{device_id}/execute/set_value           -> set a value (sent as the "value" JSON body key)
 
 Device list item shape (as returned by /devices; /devices/full adds "attributes"):
 {
@@ -112,7 +112,7 @@ class OpenDomoticaApiClient:
     async def async_set_value(self, device_id: str, value: Any) -> None:
         """Set a value on a device (e.g. brightness or position)."""
         await self._request(
-            "POST", f"/devices/{device_id}/execute/set_value", params={"value": value}
+            "POST", f"/devices/{device_id}/execute/set_value", json={"value": value}
         )
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
