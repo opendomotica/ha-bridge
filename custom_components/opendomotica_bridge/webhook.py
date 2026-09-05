@@ -51,11 +51,12 @@ def async_register_webhook(
             return None
 
         attribute, value = next(iter(attribute_data.items()))
+        _LOGGER.debug("Received push update for device %s: %s=%s", device_id, attribute, value)
         coordinator.async_handle_push_update(str(device_id), attribute, value)
         return None
 
     async_register(
-        hass, DOMAIN, "OpenDomotica Bridge", webhook_id, _handle_webhook, local_only=True
+        hass, DOMAIN, "OpenDomotica Bridge", webhook_id, _handle_webhook, local_only=False
     )
 
 

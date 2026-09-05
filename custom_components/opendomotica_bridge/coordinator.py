@@ -49,13 +49,13 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
     def async_handle_push_update(self, device_id: str, attribute: str, value: Any) -> None:
         """Apply a status update pushed by the domotica server via webhook."""
         if not self.data or device_id not in self.data:
-            _LOGGER.debug("Ignoring push update for unknown device %s", device_id)
+            _LOGGER.warning("Ignoring push update for unknown device %s", device_id)
             return
 
         device = self.data[device_id]
         expected_attribute = DEVICE_STATUS_ATTRIBUTE.get(device.get("type"), ATTR_PORT_STATUS)
         if attribute != expected_attribute:
-            _LOGGER.debug(
+            _LOGGER.warning(
                 "Ignoring push update for device %s: got attribute %s, expected %s",
                 device_id,
                 attribute,

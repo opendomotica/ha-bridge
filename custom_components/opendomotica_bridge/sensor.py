@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfPower, UnitOfTemperature
+from homeassistant.const import UnitOfEnergy, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -15,13 +15,13 @@ from .entity import OpenDomoticaBridgeEntity
 # different physical quantities depending on the device type.
 _DEVICE_CLASS_BY_TYPE = {
     "20002": SensorDeviceClass.TEMPERATURE,  # Sensore temperatura
-    "20003": SensorDeviceClass.POWER,        # Contatore energia elettrica (assorbimento)
-    "20004": SensorDeviceClass.POWER,        # Inverter SMA (produzione fotovoltaica)
+    "20003": SensorDeviceClass.ENERGY,       # Contatore energia elettrica (assorbimento)
+    "20004": SensorDeviceClass.ENERGY,       # Inverter SMA (produzione fotovoltaica)
 }
 _UNIT_BY_TYPE = {
     "20002": UnitOfTemperature.CELSIUS,
-    "20003": UnitOfPower.WATT,
-    "20004": UnitOfPower.WATT,
+    "20003": UnitOfEnergy.WATT_HOUR,
+    "20004": UnitOfEnergy.WATT_HOUR,
 }
 
 
