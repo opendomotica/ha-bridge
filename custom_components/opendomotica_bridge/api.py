@@ -35,6 +35,8 @@ from typing import Any
 
 import aiohttp
 
+from .const import API_KEY_HEADER
+
 _LOGGER = logging.getLogger(__name__)
 
 API_TIMEOUT = 10
@@ -54,11 +56,13 @@ class OpenDomoticaApiClient:
         port: int | None,
         session: aiohttp.ClientSession,
         use_ssl: bool = False,
+        api_key: str | None = None,
     ) -> None:
         self._session = session
         scheme = "https" if use_ssl else "http"
         netloc = f"{host}:{port}" if port else host
         self._base_url = f"{scheme}://{netloc}{API_BASE_PATH}"
+        self._api_key = api_key
 
     async def async_get_devices(self) -> list[dict[str, Any]]:
         """Return the list of devices known by the domotica server (metadata only)."""
@@ -96,6 +100,9 @@ class OpenDomoticaApiClient:
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = f"{self._base_url}{path}"
+        if self._api_key:
+            headers = {**kwargs.pop("headers", {}), API_KEY_HEADER: self._api_key}
+            kwargs["headers"] = headers
         try:
             async with asyncio.timeout(API_TIMEOUT):
                 response = await self._session.request(method, url, **kwargs)

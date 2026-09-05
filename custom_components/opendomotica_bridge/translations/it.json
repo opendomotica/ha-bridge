@@ -8,6 +8,7 @@
                     "host": "Host",
                     "port": "Porta",
                     "ssl": "Usa HTTPS",
+                    "api_key": "Chiave API",
                     "area_id": "Area predefinita per i dispositivi non assegnati"
                 }
             }
@@ -24,7 +25,8 @@
             "init": {
                 "description": "URL del webhook per gli aggiornamenti push: {webhook_url}",
                 "data": {
-                    "scan_interval": "Intervallo di aggiornamento (secondi)"
+                    "scan_interval": "Intervallo di aggiornamento (secondi)",
+                    "api_key": "Chiave API"
                 }
             }
         }

@@ -11,7 +11,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .api import OpenDomoticaApiClient
-from .const import CONF_AREA_ID, CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
+from .const import CONF_API_KEY, CONF_AREA_ID, CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
 from .coordinator import OpenDomoticaDataUpdateCoordinator
 from .webhook import async_register_webhook, async_unregister_webhook
 
@@ -26,6 +26,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         port=entry.data.get(CONF_PORT),
         session=session,
         use_ssl=entry.data.get(CONF_SSL, False),
+        api_key=entry.options.get(CONF_API_KEY, entry.data.get(CONF_API_KEY)),
     )
 
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)

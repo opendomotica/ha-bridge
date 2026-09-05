@@ -16,7 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .api import OpenDomoticaApiClient, OpenDomoticaApiError
-from .const import CONF_AREA_ID, CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_API_KEY, CONF_AREA_ID, CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +25,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Optional(CONF_PORT): int,
         vol.Optional(CONF_SSL, default=False): bool,
+        vol.Optional(CONF_API_KEY): str,
         vol.Optional(CONF_AREA_ID): selector.AreaSelector(),
     }
 )
@@ -48,6 +49,7 @@ class OpenDomoticaBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
                 port=user_input.get(CONF_PORT),
                 session=session,
                 use_ssl=user_input[CONF_SSL],
+                api_key=user_input.get(CONF_API_KEY),
             )
             try:
                 await client.async_get_devices()
@@ -94,7 +96,13 @@ class OpenDomoticaBridgeOptionsFlow(OptionsFlow):
                         default=self._config_entry.options.get(
                             CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
                         ),
-                    ): int
+                    ): int,
+                    vol.Optional(
+                        CONF_API_KEY,
+                        default=self._config_entry.options.get(
+                            CONF_API_KEY, self._config_entry.data.get(CONF_API_KEY, "")
+                        ),
+                    ): str,
                 }
             ),
             description_placeholders={"webhook_url": self._webhook_url},

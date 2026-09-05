@@ -5,6 +5,12 @@ DOMAIN = "opendomotica_bridge"
 
 DEFAULT_SCAN_INTERVAL = 30
 
+# Header used to send the API key with every request to the domotica server.
+API_KEY_HEADER = "HTTP_X_OD_AUTH"
+
+# Config entry data key holding the API key sent with every request.
+CONF_API_KEY = "api_key"
+
 # Config entry data key holding the generated webhook id used to receive
 # push status updates from the domotica server.
 CONF_WEBHOOK_ID = "webhook_id"

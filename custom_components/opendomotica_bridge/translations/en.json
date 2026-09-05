@@ -8,6 +8,7 @@
                     "host": "Host",
                     "port": "Port",
                     "ssl": "Use HTTPS",
+                    "api_key": "API key",
                     "area_id": "Default area for unassigned devices"
                 }
             }
@@ -24,7 +25,8 @@
             "init": {
                 "description": "Webhook URL for push updates: {webhook_url}",
                 "data": {
-                    "scan_interval": "Update interval (seconds)"
+                    "scan_interval": "Update interval (seconds)",
+                    "api_key": "API key"
                 }
             }
         }
