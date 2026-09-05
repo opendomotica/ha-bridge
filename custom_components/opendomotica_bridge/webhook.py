@@ -14,6 +14,10 @@ The update is only applied if the attribute name matches the attribute
 normally polled for that device (see const.DEVICE_STATUS_ATTRIBUTE);
 periodic polling keeps running as a fallback in case a push notification is
 missed.
+
+The webhook is secured only by its random webhook_id (a Home Assistant
+convention); it does not require the api_key used for outgoing requests to
+the domotica server, so the server can POST here without authenticating.
 """
 from __future__ import annotations
 

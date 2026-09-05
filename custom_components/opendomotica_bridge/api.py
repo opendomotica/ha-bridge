@@ -35,16 +35,33 @@ from typing import Any
 
 import aiohttp
 
-from .const import API_KEY_HEADER
+from .const import AUTH_HEADER
 
 _LOGGER = logging.getLogger(__name__)
 
 API_TIMEOUT = 10
 API_BASE_PATH = "/api/v1"
 
+# Log messages for the main HTTP error codes the domotica server may return,
+# beyond 401 (handled separately as an auth error).
+_HTTP_ERROR_MESSAGES: dict[int, str] = {
+    400: "Bad request",
+    403: "Access forbidden (check API key permissions)",
+    404: "Resource not found",
+    429: "Too many requests (rate limited)",
+    500: "Internal server error",
+    502: "Bad gateway",
+    503: "Service unavailable",
+    504: "Gateway timeout",
+}
+
 
 class OpenDomoticaApiError(Exception):
     """Raised when communication with the domotica server fails."""
+
+
+class OpenDomoticaAuthError(OpenDomoticaApiError):
+    """Raised when the domotica server rejects the API key (HTTP 401)."""
 
 
 class OpenDomoticaApiClient:
@@ -101,11 +118,22 @@ class OpenDomoticaApiClient:
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = f"{self._base_url}{path}"
         if self._api_key:
-            headers = {**kwargs.pop("headers", {}), API_KEY_HEADER: self._api_key}
+            headers = {**kwargs.pop("headers", {}), AUTH_HEADER: f"Bearer {self._api_key}"}
             kwargs["headers"] = headers
         try:
             async with asyncio.timeout(API_TIMEOUT):
                 response = await self._session.request(method, url, **kwargs)
+                if response.status == 401:
+                    _LOGGER.error(
+                        "Authentication failed calling %s %s: invalid or missing API key",
+                        method,
+                        url,
+                    )
+                    raise OpenDomoticaAuthError(f"Authentication failed for {url}: invalid API key")
+                if response.status in _HTTP_ERROR_MESSAGES:
+                    message = _HTTP_ERROR_MESSAGES[response.status]
+                    _LOGGER.error("%s calling %s %s (HTTP %s)", message, method, url, response.status)
+                    raise OpenDomoticaApiError(f"{message} for {url} (HTTP {response.status})")
                 response.raise_for_status()
                 if response.content_type == "application/json":
                     return await response.json()
@@ -116,3 +144,12 @@ class OpenDomoticaApiClient:
         except TimeoutError as err:
             _LOGGER.error("Timeout calling %s %s after %ss", method, url, API_TIMEOUT)
             raise OpenDomoticaApiError(f"Timeout communicating with {url}") from err
+        except ValueError as err:
+            # response.json() raises this (json.JSONDecodeError) on a malformed body.
+            _LOGGER.error("Invalid response body from %s %s: %s", method, url, err)
+            raise OpenDomoticaApiError(f"Invalid response body from {url}: {err}") from err
+        except OpenDomoticaApiError:
+            raise
+        except Exception as err:  # noqa: BLE001 - last resort so callers never crash unlogged
+            _LOGGER.exception("Unexpected error calling %s %s", method, url)
+            raise OpenDomoticaApiError(f"Unexpected error communicating with {url}: {err}") from err
