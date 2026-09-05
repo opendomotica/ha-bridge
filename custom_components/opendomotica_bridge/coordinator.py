@@ -1,7 +1,6 @@
 """DataUpdateCoordinator for the OpenDomotica Bridge integration."""
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
 import logging
 from typing import Any
@@ -16,7 +15,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
-    """Poll the domotica server for the list of devices and their status attribute."""
+    """Poll the domotica server for all devices and their attribute values."""
 
     def __init__(self, hass: HomeAssistant, client: OpenDomoticaApiClient, scan_interval: int) -> None:
         super().__init__(
@@ -29,28 +28,33 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         try:
-            devices = await self.client.async_get_devices()
-            statuses = await asyncio.gather(
-                *(
-                    self.client.async_get_device_attribute(
-                        device["device_id"],
-                        DEVICE_STATUS_ATTRIBUTE.get(device.get("type"), ATTR_PORT_STATUS),
-                    )
-                    for device in devices
-                ),
-                return_exceptions=True,
-            )
+            devices = await self.client.async_get_devices_full()
         except OpenDomoticaApiError as err:
             raise UpdateFailed(str(err)) from err
 
         result: dict[str, dict[str, Any]] = {}
-        for device, status in zip(devices, statuses):
-            if isinstance(status, OpenDomoticaApiError):
-                _LOGGER.debug(
-                    "Unable to read status of device %s: %s", device["device_id"], status
-                )
-                status = None
-            elif isinstance(status, BaseException):
-                raise status
-            result[device["device_id"]] = {**device, "status_value": status}
+        for device in devices:
+            expected_attribute = DEVICE_STATUS_ATTRIBUTE.get(device.get("type"), ATTR_PORT_STATUS)
+            attribute = device.get("attributes", {}).get(expected_attribute) or {}
+            result[device["device_id"]] = {**device, "status_value": attribute.get("value")}
         return result
+
+    def async_handle_push_update(self, device_id: str, attribute: str, value: Any) -> None:
+        """Apply a status update pushed by the domotica server via webhook."""
+        if not self.data or device_id not in self.data:
+            _LOGGER.debug("Ignoring push update for unknown device %s", device_id)
+            return
+
+        device = self.data[device_id]
+        expected_attribute = DEVICE_STATUS_ATTRIBUTE.get(device.get("type"), ATTR_PORT_STATUS)
+        if attribute != expected_attribute:
+            _LOGGER.debug(
+                "Ignoring push update for device %s: got attribute %s, expected %s",
+                device_id,
+                attribute,
+                expected_attribute,
+            )
+            return
+
+        new_data = {**self.data, device_id: {**device, "status_value": value}}
+        self.async_set_updated_data(new_data)

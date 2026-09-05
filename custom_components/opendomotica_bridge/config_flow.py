@@ -6,6 +6,7 @@ from typing import Any
 
 import voluptuous as vol
 
+from homeassistant.components.webhook import async_generate_id
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_SSL
 from homeassistant.core import callback
@@ -13,7 +14,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import OpenDomoticaApiClient, OpenDomoticaApiError
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +54,8 @@ class OpenDomoticaBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
                 title = user_input[CONF_HOST]
                 if user_input.get(CONF_PORT):
                     title = f"{title}:{user_input[CONF_PORT]}"
-                return self.async_create_entry(title=title, data=user_input)
+                data = {**user_input, CONF_WEBHOOK_ID: async_generate_id()}
+                return self.async_create_entry(title=title, data=data)
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors

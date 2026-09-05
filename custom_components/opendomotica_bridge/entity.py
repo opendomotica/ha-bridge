@@ -20,7 +20,7 @@ def parse_bool_status(value: Any) -> bool | None:
         return value != 0
     if isinstance(value, str):
         return value.strip().lower() not in ("", "0", "false", "off")
-    return bool(value)
+    return None
 
 
 class OpenDomoticaBridgeEntity(CoordinatorEntity[OpenDomoticaDataUpdateCoordinator]):

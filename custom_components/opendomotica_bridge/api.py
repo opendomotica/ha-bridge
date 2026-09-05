@@ -2,7 +2,10 @@
 
 Confirmed endpoint contract:
 - GET  /api/v1/devices                                        -> list of devices (metadata only, no status)
-- GET  /api/v1/devices/{device_id}/attributes/{attribute}      -> current value of a device attribute
+- GET  /api/v1/devices/full                                   -> list of devices with all their attributes
+  (used for polling: each device has an "attributes" dict keyed by attribute
+  name, each entry shaped as {"value": ..., "readonly": ..., "historical": ...})
+- GET  /api/v1/devices/{device_id}/attributes/{attribute}      -> current value of a single device attribute
   (attribute is one of: port_status, current_value, current_power, current_power_ac -
   see const.DEVICE_STATUS_ATTRIBUTE)
 - POST /api/v1/devices/{device_id}/execute/turn_on             -> turn a device on
@@ -10,7 +13,7 @@ Confirmed endpoint contract:
 - POST /api/v1/devices/{device_id}/execute/toggle              -> toggle a device
 - POST /api/v1/devices/{device_id}/execute/set_value           -> set a value (sent as the "value" query param)
 
-Device list item shape:
+Device list item shape (as returned by /devices; /devices/full adds "attributes"):
 {
     "device_id": "178",
     "device_description": "Luce porta 128",
@@ -61,9 +64,17 @@ class OpenDomoticaApiClient:
         """Return the list of devices known by the domotica server (metadata only)."""
         return await self._request("GET", "/devices")
 
+    async def async_get_devices_full(self) -> list[dict[str, Any]]:
+        """Return all devices together with their full set of attributes (for polling)."""
+        return await self._request("GET", "/devices/full")
+
     async def async_get_device_attribute(self, device_id: str, attribute: str) -> Any:
         """Return the current value of a device attribute (e.g. port_status, current_value)."""
-        return await self._request("GET", f"/devices/{device_id}/attributes/{attribute}")
+        result = await self._request("GET", f"/devices/{device_id}/attributes/{attribute}")
+        # Attribute values are always wrapped as {"value": ...}.
+        if isinstance(result, dict):
+            return result.get("value")
+        return result
 
     async def async_turn_on(self, device_id: str) -> None:
         """Turn a device on."""

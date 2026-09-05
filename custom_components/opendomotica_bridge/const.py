@@ -5,6 +5,10 @@ DOMAIN = "opendomotica_bridge"
 
 DEFAULT_SCAN_INTERVAL = 30
 
+# Config entry data key holding the generated webhook id used to receive
+# push status updates from the domotica server.
+CONF_WEBHOOK_ID = "webhook_id"
+
 PLATFORMS = [
     Platform.LIGHT,
     Platform.SWITCH,

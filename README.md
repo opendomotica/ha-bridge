@@ -10,12 +10,13 @@ server.
 
 ```
 custom_components/opendomotica_bridge/
-├── __init__.py        # setup/unload della config entry, avvio del coordinator
+├── __init__.py        # setup/unload della config entry, registrazione webhook
 ├── api.py             # client verso il server di domotica
 ├── config_flow.py      # flusso di configurazione UI (host/porta/SSL) + opzioni
 ├── const.py            # DOMAIN, piattaforme, mappatura codice "type" -> categoria
-├── coordinator.py       # polling periodico dei dispositivi (DataUpdateCoordinator)
+├── coordinator.py       # polling periodico + applicazione degli update push (DataUpdateCoordinator)
 ├── entity.py            # entità base condivisa (device_info, disponibilità)
+├── webhook.py           # endpoint webhook per ricevere gli aggiornamenti push dal server
 ├── light.py, switch.py, sensor.py, cover.py, climate.py  # piattaforme entità
 ├── manifest.json
 ├── strings.json / translations/  # testi UI (en, it)
@@ -27,16 +28,19 @@ Il client in `api.py` chiama le seguenti API REST (basate su `http(s)://<host>:<
 
 | Azione | Endpoint |
 |---|---|
-| Lista dispositivi | `GET /devices` |
-| Valore di un attributo | `GET /devices/{device_id}/attributes/{attribute}` |
+| Lista dispositivi (solo metadati) | `GET /devices` |
+| Lista dispositivi con tutti gli attributi (polling) | `GET /devices/full` |
+| Valore di un singolo attributo | `GET /devices/{device_id}/attributes/{attribute}` |
 | Accendi | `POST /devices/{device_id}/execute/turn_on` |
 | Spegni | `POST /devices/{device_id}/execute/turn_off` |
 | Inverti stato | `POST /devices/{device_id}/execute/toggle` |
 | Imposta un valore | `POST /devices/{device_id}/execute/set_value?value=...` |
 
-La lista dispositivi non contiene lo stato: il coordinator interroga
-l'attributo giusto per ogni dispositivo (in base al codice `type`, vedi
-`const.DEVICE_STATUS_ATTRIBUTE`) a ogni ciclo di polling e lo unisce ai
+Il coordinator usa `GET /devices/full` per il polling: una singola chiamata
+restituisce tutti i dispositivi già completi di un dizionario `attributes`
+(chiave = nome attributo, valore = `{"value": ..., "readonly": ..., "historical": ...}`).
+Per ogni dispositivo viene estratto l'attributo giusto in base al codice
+`type` (vedi `const.DEVICE_STATUS_ATTRIBUTE`) e il suo `value` viene unito ai
 metadati sotto la chiave `status_value`. Attributi confermati:
 
 | Attributo | Usato da |
@@ -45,6 +49,33 @@ metadati sotto la chiave `status_value`. Attributi confermati:
 | `current_value` | sensori di temperatura; posizione tapparelle (scala 0-250) |
 | `current_power` | sensori di assorbimento elettrico |
 | `current_power_ac` | inverter fotovoltaici (produzione) |
+
+## Aggiornamenti push (webhook)
+
+Oltre al polling periodico, l'integrazione registra un webhook di Home
+Assistant per ricevere aggiornamenti di stato in tempo reale dal server di
+domotica, senza attendere il prossimo ciclo di polling (che resta comunque
+attivo come fallback in caso di notifiche mancate).
+
+All'aggiunta dell'integrazione viene generato un `webhook_id` univoco e
+l'URL completo viene scritto nel log di Home Assistant all'avvio
+(`/api/webhook/{webhook_id}`). Configura il tuo server di domotica affinché
+esegua una `POST` a quell'URL con questo payload JSON ogni volta che lo stato
+di un dispositivo cambia:
+
+```jsonc
+{
+  "device_id": "178",
+  "attribute": {
+    "port_status": "1"   // il nome della chiave deve corrispondere all'attributo normalmente interrogato per quel device
+  }
+}
+```
+
+L'update viene applicato solo se il nome dell'attributo corrisponde a quello
+previsto per il tipo di dispositivo (vedi `const.DEVICE_STATUS_ATTRIBUTE`); il
+webhook non richiede autenticazione (pensato per rete locale fidata) ed è
+raggiungibile solo dalla rete locale (`local_only`).
 
 Formato di un elemento della lista dispositivi:
 
