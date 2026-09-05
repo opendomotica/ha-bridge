@@ -7,7 +7,8 @@
                 "data": {
                     "host": "Host",
                     "port": "Porta",
-                    "ssl": "Usa HTTPS"
+                    "ssl": "Usa HTTPS",
+                    "area_id": "Area predefinita per i dispositivi non assegnati"
                 }
             }
         },
@@ -21,6 +22,7 @@
     "options": {
         "step": {
             "init": {
+                "description": "URL del webhook per gli aggiornamenti push: {webhook_url}",
                 "data": {
                     "scan_interval": "Intervallo di aggiornamento (secondi)"
                 }

@@ -64,15 +64,16 @@ class OpenDomoticaClimate(OpenDomoticaBridgeEntity, ClimateEntity):
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode == HVACMode.OFF:
-            await self.coordinator.client.async_turn_off(self._device_id)
+            await self._async_execute("turn off", self.coordinator.client.async_turn_off(self._device_id))
         else:
-            await self.coordinator.client.async_turn_on(self._device_id)
-        await self.coordinator.async_request_refresh()
+            await self._async_execute("turn on", self.coordinator.client.async_turn_on(self._device_id))
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-        await self.coordinator.client.async_set_value(self._device_id, temperature)
-        await self.coordinator.async_request_refresh()
+        await self._async_execute(
+            "set temperature of",
+            self.coordinator.client.async_set_value(self._device_id, temperature),
+        )
 

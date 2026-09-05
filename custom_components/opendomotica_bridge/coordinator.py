@@ -30,6 +30,7 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
         try:
             devices = await self.client.async_get_devices_full()
         except OpenDomoticaApiError as err:
+            _LOGGER.error("Failed to poll devices from the domotica server: %s", err)
             raise UpdateFailed(str(err)) from err
 
         result: dict[str, dict[str, Any]] = {}

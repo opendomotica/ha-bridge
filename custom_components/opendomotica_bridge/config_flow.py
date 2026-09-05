@@ -11,10 +11,12 @@ from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_SSL
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.network import NoURLAvailableError, get_url
 
 from .api import OpenDomoticaApiClient, OpenDomoticaApiError
-from .const import CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import CONF_AREA_ID, CONF_WEBHOOK_ID, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HOST): str,
         vol.Optional(CONF_PORT): int,
         vol.Optional(CONF_SSL, default=False): bool,
+        vol.Optional(CONF_AREA_ID): selector.AreaSelector(),
     }
 )
 
@@ -48,7 +51,10 @@ class OpenDomoticaBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
             )
             try:
                 await client.async_get_devices()
-            except OpenDomoticaApiError:
+            except OpenDomoticaApiError as err:
+                _LOGGER.error(
+                    "Unable to connect to domotica server at %s: %s", user_input[CONF_HOST], err
+                )
                 errors["base"] = "cannot_connect"
             else:
                 title = user_input[CONF_HOST]
@@ -91,4 +97,17 @@ class OpenDomoticaBridgeOptionsFlow(OptionsFlow):
                     ): int
                 }
             ),
+            description_placeholders={"webhook_url": self._webhook_url},
         )
+
+    @property
+    def _webhook_url(self) -> str:
+        """Return the full webhook URL to display to the user, if one was generated."""
+        webhook_id = self._config_entry.data.get(CONF_WEBHOOK_ID)
+        if not webhook_id:
+            return "non disponibile: rimuovi e ri-aggiungi l'integrazione per abilitarlo"
+        try:
+            base_url = get_url(self.hass, prefer_external=False)
+        except NoURLAvailableError:
+            base_url = ""
+        return f"{base_url}/api/webhook/{webhook_id}"

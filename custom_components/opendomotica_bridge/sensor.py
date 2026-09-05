@@ -65,8 +65,3 @@ class OpenDomoticaSensor(OpenDomoticaBridgeEntity, SensorEntity):
             except ValueError:
                 return value
         return value
-
-
-    @property
-    def native_unit_of_measurement(self) -> str | None:
-        return self.device.get("unit")

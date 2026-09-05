@@ -9,6 +9,9 @@ DEFAULT_SCAN_INTERVAL = 30
 # push status updates from the domotica server.
 CONF_WEBHOOK_ID = "webhook_id"
 
+# Config entry data key holding the area suggested for all devices at setup.
+CONF_AREA_ID = "area_id"
+
 PLATFORMS = [
     Platform.LIGHT,
     Platform.SWITCH,

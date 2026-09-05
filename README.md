@@ -140,7 +140,6 @@ resto dell'integrazione dipende esclusivamente dai suoi metodi pubblici
 
 ## Installazione
 
-
 ### Tramite HACS (repository custom)
 
 1. In HACS → Integrazioni → menu (⋮) → **Repository personalizzate**.
@@ -156,31 +155,15 @@ Copia la cartella `custom_components/opendomotica_bridge` nella cartella
 
 Impostazioni → Dispositivi e servizi → Aggiungi integrazione →
 **OpenDomotica Bridge**. Inserisci host, porta e se usare HTTPS per il server
-di domotica.
+di domotica. Puoi anche scegliere un'**area** di Home Assistant, usata come
+fallback quando il dispositivo non ha un gruppo con descrizione (vedi sotto).
 
-L'intervallo di aggiornamento (polling) è configurabile dalle opzioni
-dell'integrazione dopo l'installazione (default: 30 secondi).
-
-## Licenza
-
-[MIT](LICENSE)
-
-
-### Tramite HACS (repository custom)
-
-1. In HACS → Integrazioni → menu (⋮) → **Repository personalizzate**.
-2. Aggiungi l'URL di questo repository con categoria **Integration**.
-3. Installa "OpenDomotica Bridge" e riavvia Home Assistant.
-
-### Manuale
-
-Copia la cartella `custom_components/opendomotica_bridge` nella cartella
-`custom_components` della tua configurazione Home Assistant e riavvia.
-
-## Configurazione
-
-Impostazioni → Dispositivi e servizi → Aggiungi integrazione →
-**OpenDomotica Bridge**. Inserisci host e porta del server di domotica.
+Ogni dispositivo viene assegnato a un'area suggerita in base al campo
+`group.description` restituito dal server per quel dispositivo (es. il nome
+della stanza); se assente, si usa l'area scelta in fase di configurazione.
+In entrambi i casi il suggerimento viene applicato solo alla prima creazione
+del dispositivo: se lo sposti manualmente in un'altra area, la scelta non
+viene sovrascritta ai riavvii successivi.
 
 L'intervallo di aggiornamento (polling) è configurabile dalle opzioni
 dell'integrazione dopo l'installazione (default: 30 secondi).

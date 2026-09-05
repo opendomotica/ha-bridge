@@ -62,15 +62,14 @@ class OpenDomoticaCover(OpenDomoticaBridgeEntity, CoverEntity):
         return position == 0 if position is not None else None
 
     async def async_open_cover(self, **kwargs: Any) -> None:
-        await self.coordinator.client.async_turn_on(self._device_id)
-        await self.coordinator.async_request_refresh()
+        await self._async_execute("open", self.coordinator.client.async_turn_on(self._device_id))
 
     async def async_close_cover(self, **kwargs: Any) -> None:
-        await self.coordinator.client.async_turn_off(self._device_id)
-        await self.coordinator.async_request_refresh()
+        await self._async_execute("close", self.coordinator.client.async_turn_off(self._device_id))
 
     async def async_set_cover_position(self, **kwargs: Any) -> None:
         raw_value = round(kwargs["position"] / 100 * COVER_MAX_VALUE)
-        await self.coordinator.client.async_set_value(self._device_id, raw_value)
-        await self.coordinator.async_request_refresh()
+        await self._async_execute(
+            "set position of", self.coordinator.client.async_set_value(self._device_id, raw_value)
+        )
 

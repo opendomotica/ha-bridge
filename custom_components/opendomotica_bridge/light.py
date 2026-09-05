@@ -51,10 +51,8 @@ class OpenDomoticaLight(OpenDomoticaBridgeEntity, LightEntity):
         return parse_bool_status(self.device.get("status_value"))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self.coordinator.client.async_turn_on(self._device_id)
-        await self.coordinator.async_request_refresh()
+        await self._async_execute("turn on", self.coordinator.client.async_turn_on(self._device_id))
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.coordinator.client.async_turn_off(self._device_id)
-        await self.coordinator.async_request_refresh()
+        await self._async_execute("turn off", self.coordinator.client.async_turn_off(self._device_id))
 

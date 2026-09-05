@@ -1,13 +1,18 @@
 """Base entity for the OpenDomotica Bridge integration."""
 from __future__ import annotations
 
-from typing import Any
+import logging
+from typing import Any, Coroutine
 
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api import OpenDomoticaApiError
 from .const import DOMAIN
 from .coordinator import OpenDomoticaDataUpdateCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def parse_bool_status(value: Any) -> bool | None:
@@ -37,7 +42,16 @@ class OpenDomoticaBridgeEntity(CoordinatorEntity[OpenDomoticaDataUpdateCoordinat
             name=self._device_name,
             manufacturer="OpenDomotica",
             model=self.device.get("type"),
+            suggested_area=self._suggested_area,
         )
+
+    @property
+    def _suggested_area(self) -> str | None:
+        """Prefer the device's own group description, fall back to the configured area."""
+        group = self.device.get("group")
+        if isinstance(group, dict) and group.get("description"):
+            return group["description"]
+        return getattr(self.coordinator, "suggested_area", None)
 
     @property
     def device(self) -> dict[str, Any]:
@@ -57,3 +71,14 @@ class OpenDomoticaBridgeEntity(CoordinatorEntity[OpenDomoticaDataUpdateCoordinat
     def available(self) -> bool:
         """Return True if the device is still reported by the coordinator."""
         return super().available and self._device_id in self.coordinator.data
+
+    async def _async_execute(self, action: str, command: Coroutine[Any, Any, None]) -> None:
+        """Run a client command, logging and surfacing failures, then refresh state."""
+        try:
+            await command
+        except OpenDomoticaApiError as err:
+            _LOGGER.error("Failed to %s device %s: %s", action, self._device_id, err)
+            raise HomeAssistantError(
+                f"Failed to {action} device {self._device_id}: {err}"
+            ) from err
+        await self.coordinator.async_request_refresh()
