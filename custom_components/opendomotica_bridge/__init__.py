@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import logging
 
+from homeassistant.components import persistent_notification
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, CONF_SCAN_INTERVAL, CONF_SSL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar
-from homeassistant.helpers import persistent_notification
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 

@@ -2,10 +2,11 @@
     "domain": "opendomotica_bridge",
     "name": "OpenDomotica Bridge",
     "codeowners": [
-        "@your-github-username"
+        "@opendomotica"
     ],
     "config_flow": true,
     "dependencies": [
+        "persistent_notification",
         "webhook"
     ],
     "documentation": "https://github.com/OpenDomotica/ha-bridge",
