@@ -60,6 +60,8 @@ ATTR_PORT_STATUS = "port_status"
 ATTR_CURRENT_VALUE = "current_value"
 ATTR_CURRENT_POWER = "current_power"
 ATTR_CURRENT_POWER_AC = "current_power_ac"
+ATTR_TODAY_PULSE_COUNTER = "today_pulse_counter"
+ATTR_TODAY_ENERGY = "today_energy"
 
 # Attribute to poll for each device type code (defaults to ATTR_PORT_STATUS).
 DEVICE_STATUS_ATTRIBUTE: dict[str, str] = {
@@ -67,6 +69,13 @@ DEVICE_STATUS_ATTRIBUTE: dict[str, str] = {
     "20002": ATTR_CURRENT_VALUE,     # Sensore temperatura
     "20003": ATTR_CURRENT_POWER,     # Contatore energia elettrica (assorbimento)
     "20004": ATTR_CURRENT_POWER_AC,  # Inverter SMA (produzione fotovoltaica)
+}
+
+# Extra attribute exposed as a second sensor entity for some device types,
+# in addition to the one polled via DEVICE_STATUS_ATTRIBUTE.
+DEVICE_EXTRA_ATTRIBUTE: dict[str, str] = {
+    "20003": ATTR_TODAY_PULSE_COUNTER,  # Contatore energia elettrica: totale Wh del giorno (1 impulso = 1 Wh)
+    "20004": ATTR_TODAY_ENERGY,         # Inverter SMA: totale Wh prodotti nel giorno
 }
 
 # Motorised covers report their position on a 0 (closed) - 250 (open) scale.

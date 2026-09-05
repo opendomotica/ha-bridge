@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import OpenDomoticaApiClient, OpenDomoticaApiError
-from .const import ATTR_PORT_STATUS, DEVICE_STATUS_ATTRIBUTE, DOMAIN
+from .const import ATTR_PORT_STATUS, DEVICE_EXTRA_ATTRIBUTE, DEVICE_STATUS_ATTRIBUTE, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,8 +53,18 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
             return
 
         device = self.data[device_id]
-        expected_attribute = DEVICE_STATUS_ATTRIBUTE.get(device.get("type"), ATTR_PORT_STATUS)
-        if attribute != expected_attribute:
+        device_type = device.get("type")
+        expected_attribute = DEVICE_STATUS_ATTRIBUTE.get(device_type, ATTR_PORT_STATUS)
+        extra_attribute = DEVICE_EXTRA_ATTRIBUTE.get(device_type)
+
+        if attribute == expected_attribute:
+            updated_device = {**device, "status_value": value}
+        elif extra_attribute is not None and attribute == extra_attribute:
+            attributes = device.get("attributes")
+            attributes = dict(attributes) if isinstance(attributes, dict) else {}
+            attributes[attribute] = {**attributes.get(attribute, {}), "value": value}
+            updated_device = {**device, "attributes": attributes}
+        else:
             _LOGGER.warning(
                 "Ignoring push update for device %s: got attribute %s, expected %s",
                 device_id,
@@ -63,7 +73,7 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
             )
             return
 
-        new_data = {**self.data, device_id: {**device, "status_value": value}}
+        new_data = {**self.data, device_id: updated_device}
         # Update data/listeners directly instead of via async_set_updated_data,
         # which would reset the periodic refresh timer on every push and could
         # starve the update_interval polling if pushes arrive frequently.
