@@ -35,7 +35,13 @@ class OpenDomoticaDataUpdateCoordinator(DataUpdateCoordinator[dict[str, dict[str
         result: dict[str, dict[str, Any]] = {}
         for device in devices:
             expected_attribute = DEVICE_STATUS_ATTRIBUTE.get(device.get("type"), ATTR_PORT_STATUS)
-            attribute = device.get("attributes", {}).get(expected_attribute) or {}
+            # Some servers serialize an empty attributes map as [] instead of {}.
+            attributes = device.get("attributes")
+            if not isinstance(attributes, dict):
+                attributes = {}
+            attribute = attributes.get(expected_attribute)
+            if not isinstance(attribute, dict):
+                attribute = {}
             result[device["device_id"]] = {**device, "status_value": attribute.get("value")}
         return result
 
