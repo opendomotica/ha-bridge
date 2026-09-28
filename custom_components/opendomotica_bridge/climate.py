@@ -19,6 +19,7 @@ from .const import DOMAIN
 from .coordinator import OpenDomoticaDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+_DEFAULT_TARGET_TEMPERATURE = 20.0
 
 
 async def async_setup_entry(
@@ -46,7 +47,11 @@ class OpenDomoticaClimate(CoordinatorEntity[OpenDomoticaDataUpdateCoordinator], 
     """Representation of a server-managed heating zone."""
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
+    _attr_supported_features = (
+        ClimateEntityFeature.TARGET_TEMPERATURE
+        | ClimateEntityFeature.TURN_ON
+        | ClimateEntityFeature.TURN_OFF
+    )
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.AUTO]
     _attr_has_entity_name = True
 
@@ -125,12 +130,19 @@ class OpenDomoticaClimate(CoordinatorEntity[OpenDomoticaDataUpdateCoordinator], 
 
     @property
     def target_temperature(self) -> float | None:
-        """Return the zone's active heating threshold."""
+        """Return the active threshold or an editable value when heating is off."""
         attributes = self.zone.get("attributes")
         value = self._temperature_value(
             attributes.get("heating_threshold") if isinstance(attributes, dict) else None
         )
-        return value if value and value > 0 else None
+        if value is not None and value > 0:
+            return value
+
+        current_temperature = self.current_temperature
+        fallback = (
+            current_temperature if current_temperature is not None else _DEFAULT_TARGET_TEMPERATURE
+        )
+        return min(max(fallback, self.min_temp), self.max_temp)
 
     @staticmethod
     def _temperature_value(value: Any) -> float | None:
