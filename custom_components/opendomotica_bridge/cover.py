@@ -36,7 +36,7 @@ async def async_setup_entry(
 
 
 class OpenDomoticaCover(OpenDomoticaBridgeEntity, CoverEntity):
-    """Representation of a motorised cover exposed by the domotica server.
+    """Representation of a motorised cover exposed by the OpenDomotica server.
 
     The device reports its position via current_value on a 0 (closed) - 250
     (open) scale, rescaled here to HA's 0-100 percentage range. Open/close are

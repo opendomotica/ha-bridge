@@ -2,7 +2,7 @@
     "config": {
         "step": {
             "user": {
-                "title": "Connect to the domotica server",
+                "title": "Connect to the OpenDomotica server",
                 "description": "Enter the address of your OpenDomotica server.",
                 "data": {
                     "host": "Host",
@@ -14,7 +14,7 @@
             }
         },
         "error": {
-            "cannot_connect": "Unable to connect to the domotica server."
+            "cannot_connect": "Unable to connect to the OpenDomotica server."
         },
         "abort": {
             "already_configured": "This server is already configured."

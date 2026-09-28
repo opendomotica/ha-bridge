@@ -8,6 +8,8 @@ Confirmed endpoint contract:
 - GET  /api/v1/devices/{device_id}/attributes/{attribute}      -> current value of a single device attribute
   (attribute is one of: port_status, current_value, current_power, current_power_ac -
   see const.DEVICE_STATUS_ATTRIBUTE)
+- GET  /api/v1/climazones                                  -> climate zones, readings and linked devices
+- PUT  /api/v1/climazones/{zone_id}                        -> update a zone mode and its attributes
 - POST /api/v1/devices/{device_id}/execute/turn_on             -> turn a device on
 - POST /api/v1/devices/{device_id}/execute/turn_off            -> turn a device off
 - POST /api/v1/devices/{device_id}/execute/toggle              -> toggle a device
@@ -42,7 +44,7 @@ _LOGGER = logging.getLogger(__name__)
 API_TIMEOUT = 10
 API_BASE_PATH = "/api/v1"
 
-# Log messages for the main HTTP error codes the domotica server may return,
+# Log messages for the main HTTP error codes the OpenDomotica server may return,
 # beyond 401 (handled separately as an auth error).
 _HTTP_ERROR_MESSAGES: dict[int, str] = {
     400: "Bad request",
@@ -57,11 +59,11 @@ _HTTP_ERROR_MESSAGES: dict[int, str] = {
 
 
 class OpenDomoticaApiError(Exception):
-    """Raised when communication with the domotica server fails."""
+    """Raised when communication with the OpenDomotica server fails."""
 
 
 class OpenDomoticaAuthError(OpenDomoticaApiError):
-    """Raised when the domotica server rejects the API key (HTTP 401)."""
+    """Raised when the OpenDomotica server rejects the API key (HTTP 401)."""
 
 
 class OpenDomoticaApiClient:
@@ -82,12 +84,23 @@ class OpenDomoticaApiClient:
         self._api_key = api_key
 
     async def async_get_devices(self) -> list[dict[str, Any]]:
-        """Return the list of devices known by the domotica server (metadata only)."""
+        """Return the list of devices known by the OpenDomotica server (metadata only)."""
         return await self._request("GET", "/devices")
 
     async def async_get_devices_full(self) -> list[dict[str, Any]]:
         """Return all devices together with their full set of attributes (for polling)."""
         return await self._request("GET", "/devices/full")
+
+    async def async_get_climate_zones(self) -> list[dict[str, Any]]:
+        """Return climate zones with their associated devices and current readings."""
+        result = await self._request("GET", "/climazones")
+        if not isinstance(result, list):
+            raise OpenDomoticaApiError("Invalid climate zones response from the OpenDomotica server")
+        return result
+
+    async def async_update_climate_zone(self, zone_id: str, data: dict[str, Any]) -> None:
+        """Update a climate zone's mode and attributes."""
+        await self._request("PUT", f"/climazones/{zone_id}", json=data)
 
     async def async_get_device_attribute(self, device_id: str, attribute: str) -> Any:
         """Return the current value of a device attribute (e.g. port_status, current_value)."""

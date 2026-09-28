@@ -51,7 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         except NoURLAvailableError:
             webhook_url = f"/api/webhook/{webhook_id}"
         _LOGGER.info(
-            "OpenDomotica Bridge: configure the domotica server to POST status updates to %s",
+            "OpenDomotica Bridge: configure the OpenDomotica server to POST status updates to %s",
             webhook_url,
         )
     else:

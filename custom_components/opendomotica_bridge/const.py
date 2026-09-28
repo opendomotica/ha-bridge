@@ -5,14 +5,14 @@ DOMAIN = "opendomotica_bridge"
 
 DEFAULT_SCAN_INTERVAL = 30
 
-# Header used to send the API key with every request to the domotica server.
+# Header used to send the API key with every request to the OpenDomotica server.
 AUTH_HEADER = "Authorization"
 
 # Config entry data key holding the API key sent with every request.
 CONF_API_KEY = "api_key"
 
 # Config entry data key holding the generated webhook id used to receive
-# push status updates from the domotica server.
+# push status updates from the OpenDomotica server.
 CONF_WEBHOOK_ID = "webhook_id"
 
 # Config entry data key holding the area suggested for all devices at setup.
@@ -21,27 +21,28 @@ CONF_AREA_ID = "area_id"
 PLATFORMS = [
     Platform.LIGHT,
     Platform.SWITCH,
+    Platform.VALVE,
     Platform.SENSOR,
     Platform.COVER,
     Platform.CLIMATE,
 ]
 
-# Internal device categories, one per supported HA platform.
+# Internal device categories, one per device-backed HA platform.
 CATEGORY_LIGHT = "light"
 CATEGORY_SWITCH = "switch"
+CATEGORY_VALVE = "valve"
 CATEGORY_SENSOR = "sensor"
 CATEGORY_COVER = "cover"
-CATEGORY_CLIMATE = "climate"
 
-# Maps the numeric "type" code returned by the domotica server to an internal
+# Maps the numeric "type" code returned by the OpenDomotica server to an internal
 # category. Adjust this table if your installation uses other type codes.
 DEVICE_TYPE_MAP: dict[str, str] = {
     "10001": CATEGORY_LIGHT,   # Luce
     "10008": CATEGORY_LIGHT,   # Led strip WS2812B
     "10002": CATEGORY_SWITCH,  # Presa
     "10003": CATEGORY_SWITCH,  # Caldaia
-    "10004": CATEGORY_SWITCH,  # Elettrovalvola riscaldamento
-    "10005": CATEGORY_SWITCH,  # Elettrovalvola irrigazione
+    "10004": CATEGORY_VALVE,   # Elettrovalvola riscaldamento
+    "10005": CATEGORY_VALVE,   # Elettrovalvola irrigazione
     "10006": CATEGORY_SWITCH,  # Alimentatore
     "10101": CATEGORY_SWITCH,  # Ricevitore AV
     "20005": CATEGORY_SWITCH,  # Interruttore
@@ -57,6 +58,7 @@ DEVICE_TYPE_MAP: dict[str, str] = {
 
 # Attribute names exposed by the server under /devices/{id}/attributes/{name}.
 ATTR_PORT_STATUS = "port_status"
+ATTR_VALVE_STATUS = "valve_status"
 ATTR_CURRENT_VALUE = "current_value"
 ATTR_CURRENT_POWER = "current_power"
 ATTR_CURRENT_POWER_AC = "current_power_ac"
@@ -65,6 +67,7 @@ ATTR_TODAY_ENERGY = "today_energy"
 
 # Attribute to poll for each device type code (defaults to ATTR_PORT_STATUS).
 DEVICE_STATUS_ATTRIBUTE: dict[str, str] = {
+    "10004": ATTR_VALVE_STATUS,     # Elettrovalvola riscaldamento
     "10007": ATTR_CURRENT_VALUE,     # Motore apri/chiudi, scala 0 (chiuso) - 250 (aperto)
     "20002": ATTR_CURRENT_VALUE,     # Sensore temperatura
     "20003": ATTR_CURRENT_POWER,     # Contatore energia elettrica (assorbimento)

@@ -1,79 +1,172 @@
-"""Climate platform for the OpenDomotica Bridge integration.
-
-No type code in const.DEVICE_TYPE_MAP is currently mapped to CATEGORY_CLIMATE:
-a thermostat needs current/target temperature and hvac mode attributes that
-the confirmed API (a single status_value per device) does not expose.
-Map a type code to CATEGORY_CLIMATE and adapt this file if your server
-exposes those values through a different attribute/endpoint.
-"""
+"""Climate zones for the OpenDomotica Bridge integration."""
 from __future__ import annotations
 
+import logging
+import math
 from typing import Any
 
-from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACMode
+from homeassistant.components.climate import ClimateEntity, ClimateEntityFeature, HVACAction, HVACMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CATEGORY_CLIMATE, DEVICE_TYPE_MAP, DOMAIN
+from .api import OpenDomoticaApiError
+from .const import DOMAIN
 from .coordinator import OpenDomoticaDataUpdateCoordinator
-from .entity import OpenDomoticaBridgeEntity, parse_bool_status
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Set up thermostats, adding new ones as they are discovered by the coordinator."""
+    """Set up climate zones, adding new ones as they are discovered."""
     coordinator: OpenDomoticaDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     known_ids: set[str] = set()
 
     def _add_new_entities() -> None:
         new_entities = [
-            OpenDomoticaClimate(coordinator, device_id)
-            for device_id, device in coordinator.data.items()
-            if DEVICE_TYPE_MAP.get(device.get("type")) == CATEGORY_CLIMATE
-            and device_id not in known_ids
+            OpenDomoticaClimate(coordinator, zone_id)
+            for zone_id in coordinator.climate_zones
+            if zone_id not in known_ids
         ]
         if new_entities:
-            known_ids.update(entity._device_id for entity in new_entities)
+            known_ids.update(entity._zone_id for entity in new_entities)
             async_add_entities(new_entities)
 
     _add_new_entities()
     entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
 
 
-class OpenDomoticaClimate(OpenDomoticaBridgeEntity, ClimateEntity):
-    """Representation of a thermostat exposed by the domotica server.
-
-    Only on/off control is supported by the confirmed API: HVACMode.HEAT maps
-    to turn_on, HVACMode.OFF maps to turn_off, and target_temperature (if
-    used) is sent via set_value.
-    """
+class OpenDomoticaClimate(CoordinatorEntity[OpenDomoticaDataUpdateCoordinator], ClimateEntity):
+    """Representation of a server-managed heating zone."""
 
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
-    _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT]
+    _attr_hvac_modes = [HVACMode.OFF, HVACMode.HEAT, HVACMode.AUTO]
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator: OpenDomoticaDataUpdateCoordinator, zone_id: str) -> None:
+        super().__init__(coordinator)
+        self._zone_id = str(zone_id)
+        self._attr_unique_id = f"{DOMAIN}_climate_zone_{self._zone_id}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"climate_zone_{self._zone_id}")},
+            name=self.zone.get("description") or f"Climate zone {self._zone_id}",
+            manufacturer="OpenDomotica",
+            model="Climate zone",
+        )
+
+    @property
+    def zone(self) -> dict[str, Any]:
+        """Return the latest zone data from the coordinator."""
+        return self.coordinator.climate_zones.get(self._zone_id, {})
+
+    @property
+    def available(self) -> bool:
+        """Return whether this climate zone is still reported by the server."""
+        return super().available and self._zone_id in self.coordinator.climate_zones
 
     @property
     def hvac_mode(self) -> HVACMode | None:
-        is_on = parse_bool_status(self.device.get("status_value"))
-        if is_on is None:
+        mode = self.zone.get("mode")
+        if mode == "auto":
+            return HVACMode.AUTO
+        if mode in ("manual", "timer"):
+            return HVACMode.HEAT
+        if mode in ("off", "disabled"):
+            return HVACMode.OFF
+        return None
+
+    @property
+    def hvac_action(self) -> HVACAction | None:
+        """Report whether the zone's valve is currently heating."""
+        mode = self.hvac_mode
+        if mode is None:
             return None
-        return HVACMode.HEAT if is_on else HVACMode.OFF
+        if mode == HVACMode.OFF:
+            return HVACAction.OFF
+        heating = self.zone.get("heating")
+        for association in self.zone.get("devices", []):
+            if str(association.get("type")) != "1":
+                continue
+            device = self.coordinator.data.get(str(association.get("device_id")))
+            status = device.get("status_value") if device else None
+            if isinstance(status, str):
+                normalized = status.strip().lower()
+                if normalized in ("open", "opening"):
+                    heating = True
+                elif normalized in ("close", "closing"):
+                    heating = False
+                elif normalized in ("1", "true", "on"):
+                    heating = True
+                elif normalized in ("", "0", "false", "off"):
+                    heating = False
+            elif isinstance(status, (bool, int, float)):
+                heating = bool(status)
+            if heating is not None:
+                break
+        return HVACAction.HEATING if heating is True else HVACAction.IDLE
+
+    @property
+    def current_temperature(self) -> float | None:
+        """Return the current temperature reported by the zone sensor."""
+        for association in self.zone.get("devices", []):
+            if str(association.get("type")) != "0":
+                continue
+            device = self.coordinator.data.get(str(association.get("device_id")))
+            if device and device.get("status_value") is not None:
+                return self._temperature_value(device["status_value"])
+        return self._temperature_value(self.zone.get("temperature"))
+
+    @property
+    def target_temperature(self) -> float | None:
+        """Return the zone's active heating threshold."""
+        attributes = self.zone.get("attributes")
+        value = self._temperature_value(
+            attributes.get("heating_threshold") if isinstance(attributes, dict) else None
+        )
+        return value if value and value > 0 else None
+
+    @staticmethod
+    def _temperature_value(value: Any) -> float | None:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            temperature = float(value)
+        except (TypeError, ValueError):
+            return None
+        return temperature if math.isfinite(temperature) else None
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        if hvac_mode == HVACMode.OFF:
-            await self._async_execute("turn off", self.coordinator.client.async_turn_off(self._device_id))
-        else:
-            await self._async_execute("turn on", self.coordinator.client.async_turn_on(self._device_id))
+        mode = {
+            HVACMode.OFF: "off",
+            HVACMode.HEAT: "manual",
+            HVACMode.AUTO: "auto",
+        }.get(hvac_mode)
+        if mode is not None:
+            await self._async_update_zone({"mode": mode})
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         temperature = kwargs.get("temperature")
         if temperature is None:
             return
-        await self._async_execute(
-            "set temperature of",
-            self.coordinator.client.async_set_value(self._device_id, temperature),
+        await self._async_update_zone(
+            {"mode": "manual", "attributes": {"heating_threshold": temperature}}
         )
+
+    async def _async_update_zone(self, data: dict[str, Any]) -> None:
+        """Apply a mode or target-temperature change to the OpenDomotica server."""
+        try:
+            await self.coordinator.client.async_update_climate_zone(self._zone_id, data)
+            await self.coordinator.async_request_refresh()
+        except OpenDomoticaApiError as err:
+            _LOGGER.error("Failed to update climate zone %s: %s", self._zone_id, err)
+            raise HomeAssistantError(
+                f"Failed to update climate zone {self._zone_id}: {err}"
+            ) from err
 

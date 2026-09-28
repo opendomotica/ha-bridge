@@ -108,7 +108,7 @@ async def async_setup_entry(
 
 
 class OpenDomoticaSensor(OpenDomoticaBridgeEntity, SensorEntity):
-    """Representation of a sensor exposed by the domotica server."""
+    """Representation of a sensor exposed by the OpenDomotica server."""
 
     def __init__(
         self,

@@ -2,9 +2,9 @@
 
 Integrazione custom per Home Assistant che fa da **ponte (bridge)** tra un
 server di domotica esterno e Home Assistant: scopre i dispositivi esposti dal
-server, li rappresenta come entità HA (luci, interruttori, sensori, tapparelle,
-climatizzazione) e inoltra i comandi impartiti da Home Assistant verso il
-server.
+server, li rappresenta come entità HA (luci, interruttori, valvole, sensori,
+tapparelle, climatizzazione) e inoltra i comandi impartiti da Home Assistant
+verso il server.
 
 ## Struttura del progetto
 
@@ -17,7 +17,7 @@ custom_components/opendomotica_bridge/
 ├── coordinator.py       # polling periodico + applicazione degli update push (DataUpdateCoordinator)
 ├── entity.py            # entità base condivisa (device_info, disponibilità)
 ├── webhook.py           # endpoint webhook per ricevere gli aggiornamenti push dal server
-├── light.py, switch.py, sensor.py, cover.py, climate.py  # piattaforme entità
+├── light.py, switch.py, valve.py, sensor.py, cover.py, climate.py  # piattaforme entità
 ├── manifest.json
 ├── strings.json / translations/  # testi UI (en, it)
 ```
@@ -31,6 +31,8 @@ Il client in `api.py` chiama le seguenti API REST (basate su `http(s)://<host>:<
 | Lista dispositivi (solo metadati) | `GET /devices` |
 | Lista dispositivi con tutti gli attributi (polling) | `GET /devices/full` |
 | Valore di un singolo attributo | `GET /devices/{device_id}/attributes/{attribute}` |
+| Zone climate con letture e device associati | `GET /climazones` o `GET /climazones/{zone_id}` |
+| Aggiornamento mode/attributi zona climate | `PUT /climazones/{zone_id}` |
 | Accendi | `POST /devices/{device_id}/execute/turn_on` |
 | Spegni | `POST /devices/{device_id}/execute/turn_off` |
 | Inverti stato | `POST /devices/{device_id}/execute/toggle` |
@@ -45,10 +47,38 @@ metadati sotto la chiave `status_value`. Attributi confermati:
 
 | Attributo | Usato da |
 |---|---|
-| `port_status` | on/off (luci, interruttori, prese, elettrovalvole, ecc. — default) |
+| `port_status` | on/off (luci, interruttori, prese, elettrovalvola 10005 e altri — default) |
+| `valve_status` | stato elettrovalvola di riscaldamento (tipo 10004: `open`, `close`, `opening`, `closing`) |
 | `current_value` | sensori di temperatura; posizione tapparelle (scala 0-250) |
 | `current_power` | sensori di assorbimento elettrico |
 | `current_power_ac` | inverter fotovoltaici (produzione) |
+
+L'API espone le zone climate separatamente dai device. Ogni zona include
+`id`, `description`, `mode`, `attributes`, `devices`, `temperature` e
+`heating`; gli attributi comprendono la soglia di riscaldamento e gli eventuali
+timer configurati. Il `PUT` accetta, ad esempio:
+
+```json
+{
+  "mode": "manual",
+  "attributes": {
+    "heating_threshold": 21
+  }
+}
+```
+
+Sono accettate le modalità `disabled`, `off`, `manual`, `auto` e `timer`.
+Le modalità HA `HEAT` e `AUTO` corrispondono rispettivamente a `manual` e
+`auto`; impostare la temperatura da HA seleziona `manual`. In modalità `auto`
+il server aggiorna la soglia secondo il programma della zona. Il task del
+server continua a comandare valvole e caldaie, applicando l'isteresi configurata.
+
+Per i dispositivi il cui stato viene letto da `port_status`, il cablaggio
+`wiring` determina come interpretare il valore: con `na`, `0` significa spento
+e `1` acceso; con `nc` la corrispondenza è invertita (`0` acceso, `1` spento).
+La normalizzazione viene applicata sia ai dati ottenuti dal polling sia agli
+aggiornamenti ricevuti via webhook. Gli altri valori di `wiring` non vengono
+invertiti.
 
 ## Aggiornamenti push (webhook)
 
@@ -71,6 +101,9 @@ di un dispositivo cambia:
   }
 }
 ```
+
+Per un dispositivo di tipo `10004`, invia invece l'attributo `valve_status`,
+con valore `open`, `close`, `opening` oppure `closing`.
 
 L'update viene applicato solo se il nome dell'attributo corrisponde a quello
 previsto per il tipo di dispositivo (vedi `const.DEVICE_STATUS_ATTRIBUTE`); il
@@ -105,8 +138,8 @@ altri codici:
 | 10008 | Led strip WS2812B | light |
 | 10002 | Presa | switch |
 | 10003 | Caldaia | switch |
-| 10004 | Elettrovalvola riscaldamento | switch |
-| 10005 | Elettrovalvola irrigazione | switch |
+| 10004 | Elettrovalvola riscaldamento | valve |
+| 10005 | Elettrovalvola irrigazione | valve |
 | 10006 | Alimentatore | switch |
 | 10101 | Ricevitore AV | switch |
 | 20005 | Interruttore | switch |
@@ -123,13 +156,16 @@ altri codici:
 - **Luci**: solo accensione/spegnimento (`ColorMode.ONOFF`); `port_status` non
   ha una scala di luminosità confermata. Se un dispositivo supporta il
   dimming, aggiorna `light.py` per usare `async_set_value`.
+- **Elettrovalvole**: il tipo `10004` usa `valve_status` e supporta anche gli
+  stati di transizione `opening` e `closing`; il tipo `10005` usa `port_status`
+  con la polarità determinata dal cablaggio `wiring` (`na` o `nc`).
 - **Tapparelle**: posizione letta/scritta da `current_value` su scala 0-250 e
   riconvertita in percentuale 0-100 per Home Assistant; nessun comando "stop"
   confermato, quindi `CoverEntityFeature.STOP` non è esposto.
-- **Climatizzazione**: nessun codice `type` è mappato di default su
-  `climate`, perché l'API non espone temperatura corrente/target né modalità
-  HVAC separate. La piattaforma resta pronta per l'uso ma va completata se il
-  tuo server espone questi dati.
+- **Climatizzazione**: le entità climate rappresentano le zone esposte da
+  `/climazones`, non i singoli device. Il server deve avere l'executor REST
+  `ClimazonesAPIExecutor`; i server precedenti senza questa route continuano
+  a esporre le altre piattaforme, ma non creano entità climate.
 - **UPS** (30001): usa `port_status` come attributo di default, non
   confermato: adatta `const.DEVICE_STATUS_ATTRIBUTE` se necessario.
 

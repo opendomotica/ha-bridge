@@ -29,7 +29,7 @@ def parse_bool_status(value: Any) -> bool | None:
 
 
 class OpenDomoticaBridgeEntity(CoordinatorEntity[OpenDomoticaDataUpdateCoordinator]):
-    """Base entity backed by a device exposed by the domotica server."""
+    """Base entity backed by a device exposed by the OpenDomotica server."""
 
     _attr_has_entity_name = True
 

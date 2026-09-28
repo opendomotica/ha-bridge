@@ -1,6 +1,6 @@
-"""Webhook endpoint used to receive push status updates from the domotica server.
+"""Webhook endpoint used to receive push status updates from the OpenDomotica server.
 
-The domotica server should POST a JSON body to the webhook URL whenever a
+The OpenDomotica server should POST a JSON body to the webhook URL whenever a
 device attribute changes:
 
 {
@@ -17,7 +17,7 @@ missed.
 
 The webhook is secured only by its random webhook_id (a Home Assistant
 convention); it does not require the api_key used for outgoing requests to
-the domotica server, so the server can POST here without authenticating.
+the OpenDomotica server, so the server can POST here without authenticating.
 """
 from __future__ import annotations
 

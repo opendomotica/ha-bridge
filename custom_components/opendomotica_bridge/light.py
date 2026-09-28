@@ -36,7 +36,7 @@ async def async_setup_entry(
 
 
 class OpenDomoticaLight(OpenDomoticaBridgeEntity, LightEntity):
-    """Representation of a light exposed by the domotica server.
+    """Representation of a light exposed by the OpenDomotica server.
 
     Only on/off control is exposed: status_value is a single value with no
     confirmed brightness scale. If a given light supports dimming, override

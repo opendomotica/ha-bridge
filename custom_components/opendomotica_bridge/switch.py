@@ -36,7 +36,7 @@ async def async_setup_entry(
 
 
 class OpenDomoticaSwitch(OpenDomoticaBridgeEntity, SwitchEntity):
-    """Representation of a switch exposed by the domotica server."""
+    """Representation of a switch exposed by the OpenDomotica server."""
 
     @property
     def is_on(self) -> bool | None:

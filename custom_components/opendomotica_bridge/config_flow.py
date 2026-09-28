@@ -55,7 +55,7 @@ class OpenDomoticaBridgeConfigFlow(ConfigFlow, domain=DOMAIN):
                 await client.async_get_devices()
             except OpenDomoticaApiError as err:
                 _LOGGER.error(
-                    "Unable to connect to domotica server at %s: %s", user_input[CONF_HOST], err
+                    "Unable to connect to OpenDomotica server at %s: %s", user_input[CONF_HOST], err
                 )
                 errors["base"] = "cannot_connect"
             else:
