@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.1]
+
+### Fixed
+
+- Fixed valve entities failing to load because their position reporting capability was not declared.
+
 ## [0.3.0]
 
 ### Added

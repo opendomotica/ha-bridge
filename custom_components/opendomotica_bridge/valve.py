@@ -39,6 +39,7 @@ class OpenDomoticaValve(OpenDomoticaBridgeEntity, ValveEntity):
     """Representation of an electrically controlled valve."""
 
     _attr_supported_features = ValveEntityFeature.OPEN | ValveEntityFeature.CLOSE
+    _attr_reports_position = False
 
     @property
     def is_closed(self) -> bool | None:
